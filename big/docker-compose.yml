@@ -19,6 +19,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    labels:
+      - "fluentbit.logs=true"
 
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v23.1.3
@@ -27,13 +29,19 @@ services:
       - redpanda
       - start
       - --overprovisioned
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --node-id 0
+      - --smp
+      - "1"
+      - --memory
+      - "256M"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
       - --check=false
-      - --kafka-addr PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --kafka-addr
+      - "PLAINTEXT://0.0.0.0:9092"
+      - --advertise-kafka-addr
+      - "PLAINTEXT://redpanda:9092"
     # Remove external port exposure in production - only accessible within Docker network
     # ports:
     #   - "9092:9092"
@@ -47,6 +55,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    labels:
+      - "fluentbit.logs=true"
 
   backend:
     build:
@@ -70,6 +80,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    labels:
+      - "fluentbit.logs=true"
 
   frontend:
     build:
@@ -86,6 +98,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    labels:
+      - "fluentbit.logs=true"
 
   nginx:
     image: nginx:1.21-alpine
@@ -97,6 +111,72 @@ services:
     depends_on:
       - frontend
       - backend
+      - kibana
+    restart: unless-stopped
+    networks:
+      - app-network
+    labels:
+      - "fluentbit.logs=true"
+
+  # Elasticsearch for log storage
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: big_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - cluster.name=bigdata-logs
+      - bootstrap.memory_lock=false
+      - indices.memory.index_buffer_size=10%
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: big_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana.bigdataproject.tech
+      - SERVER_BASEPATH=
+      - SERVER_PUBLICBASEURL=http://kibana.bigdataproject.tech
+      - NODE_OPTIONS=--max-old-space-size=256
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Fluent Bit for log collection
+  fluentbit:
+    image: fluent/fluent-bit:2.2
+    container_name: big_fluentbit
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
@@ -104,6 +184,7 @@ services:
 volumes:
   postgres_data:
   redpanda_data:
+  elasticsearch_data:
 
 networks:
   app-network:
