@@ -1,0 +1,53 @@
+/* filepath: /home/jasser/Desktop/big/frontend_bigdata/src/styles.css */
+/* Global styles & theme */
+
+:root {
+  --primary-color: #00D8FF;
+  --secondary-color: #BD34FE;
+  --background-color: #f0f0f0;
+  --text-color: #333;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+/* Headers and Typography */
+h1 {
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+h2 {
+  font-size: 1.5rem;
+  color: var(--secondary-color);
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+label {
+  font-weight: bold;
+}
+
+input, select {
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+input:focus, select:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}

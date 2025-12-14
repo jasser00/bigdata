@@ -1,0 +1,11 @@
+POST http://127.0.0.1:8000/predict
+Content-Type: application/json
+
+{
+  "machineId": "machine_1",
+  "temperature": 75,
+  "humidity": 50
+}
+
+### Test endpoint
+GET http://127.0.0.1:8000/test
